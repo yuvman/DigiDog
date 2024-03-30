@@ -6,7 +6,7 @@ import { useIsFocused } from '@react-navigation/native';
 
 export default function HomeScreen({ navigation }) {
     const [sound, setSound] = useState(null);
-    const isFocused = useIsFocused(); // Hook to check if the screen is focused
+    const isFocused = useIsFocused(); // Hook to check focus
 
     useEffect(() => {
         let soundObject;
@@ -26,7 +26,7 @@ export default function HomeScreen({ navigation }) {
         }
 
         return () => {
-            // Directly use soundObject for cleanup
+            // Use soundObject for cleanup
             if (soundObject) {
                 console.log('Unloading Sound');
                 soundObject.stopAsync().then(() => {

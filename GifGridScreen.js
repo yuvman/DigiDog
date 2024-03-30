@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, Image, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Image, Text, StyleSheet, TouchableOpacity, ScrollView, Vibration } from 'react-native';
+import { Audio } from 'expo-av';
 
 export default function GifGridScreen() {
     const [dogMood, setDogMood] = useState('happy');
     const [lastClickedIndex, setLastClickedIndex] = useState(null);
     const [showThanksText, setShowThanksText] = useState(false);
     const [moodChangeMessage, setMoodChangeMessage] = useState('');
-    const [countdownTimer, setCountdownTimer] = useState(5);
+    const [countdownTimer, setCountdownTimer] = useState(15);
+    const [sound, setSound] = useState(null);
+    const [points, setPoints] = useState(0);
+
+    useEffect(() => {
+        // Play initial sound when component mounts
+        playSound(require('./assets/dog-happy.mp3'));
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -25,14 +33,17 @@ export default function GifGridScreen() {
                 case 'happy':
                     setDogMood('bored');
                     setMoodChangeMessage('I am getting bored. Quickly give me a toy!');
+                    playSound(require('./assets/dog-bored.mp3'));
                     break;
                 case 'bored':
                     setDogMood('sad');
                     setMoodChangeMessage('I am getting sad. Quickly give me a toy!');
+                    playSound(require('./assets/dog-sad.mp3'));
                     break;
                 case 'sad':
                     setDogMood('angry');
                     setMoodChangeMessage('I am getting angry!! Quickly give me a toy!');
+                    playSound(require('./assets/dog-angry.mp3'));
                     break;
                 case 'angry':
                     // Dog stays angry until it receives a toy
@@ -41,19 +52,45 @@ export default function GifGridScreen() {
                 default:
                     break;
             }
+            Vibration.vibrate(); // Vibrate when mood changes
+            setCountdownTimer(15); // Reset countdown timer
         }
     }, [dogMood, countdownTimer]);
+
+    const playSound = async (soundFile) => {
+        try {
+            // Stop and unload previous sound if it exists
+            if (sound) {
+                await sound.stopAsync();
+                await sound.unloadAsync();
+            }
+            // Play new sound
+            const { sound: newSound } = await Audio.Sound.createAsync(soundFile);
+            setSound(newSound);
+            await newSound.playAsync();
+        } catch (error) {
+            console.log('Error playing sound: ', error);
+        }
+    };
 
     const handleToyClick = (index) => {
         setLastClickedIndex(index);
         setShowThanksText(true);
         setTimeout(() => {
             setShowThanksText(false);
-            // Improve mood upon receiving a toy
+            // Improve mood on getting a toy
             setDogMood('happy');
             setMoodChangeMessage('Keep playing with Milo to keep him happy.');
             setCountdownTimer(15); // Reset countdown timer
-        }, 2000); // Change back after 2 seconds
+            playSound(require('./assets/dog-happy.mp3')); // Play intro sound when toy is given
+        }, 2000); // Change back after 2 secs
+        // Stop and unload angry sound after toy
+        if (dogMood === 'angry') {
+            sound.stopAsync();
+            sound.unloadAsync();
+        }
+        // Increase 1 point when a toy is clicked
+        setPoints(points + 1);
     };
 
     const getDogMoodGif = () => {
@@ -93,6 +130,8 @@ export default function GifGridScreen() {
             <View style={styles.happyTextContainer}>
                 <Text style={styles.happyText}>{showThanksText ? "Thanks! It improved Milo's Mood!" : moodChangeMessage}</Text>
             </View>
+            
+           
             <ScrollView contentContainerStyle={styles.gifsContainer}>
                 <Text style={styles.title}>Toys - Click on any to play with Milo</Text>
                 <View style={styles.row}>
@@ -100,9 +139,14 @@ export default function GifGridScreen() {
                         <TouchableOpacity key={index} onPress={() => handleToyClick(index)}>
                             <Image source={toy.source} style={[styles.gif, lastClickedIndex === index && styles.highlighted]} />
                         </TouchableOpacity>
+
                     ))}
                 </View>
             </ScrollView>
+            {/* Display points */}
+            <View style={styles.pointsContainer}>
+                <Text style={styles.pointsText}>Points: {points}</Text>
+            </View>
         </View>
     );
 }
@@ -116,11 +160,11 @@ const styles = StyleSheet.create({
     happyDogGif: {
         paddingTop: 50,
         width: '100%',
-        height: '56%',
+        height: '51%',
         resizeMode: 'contain',
     },
     happyTextContainer: {
-        backgroundColor: '#967969',
+        backgroundColor: '#7851A9',
         width: '100%',
         padding: 20,
         alignItems: 'center',
@@ -145,6 +189,7 @@ const styles = StyleSheet.create({
         width: '100%',
         textAlign: 'center',
         fontWeight: 'bold',
+        
     },
     row: {
         flexDirection: 'row',
@@ -156,7 +201,17 @@ const styles = StyleSheet.create({
         margin: 2,
     },
     highlighted: {
+        
         borderWidth: 2,
         borderColor: 'yellow',
+    },
+    pointsContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+    },
+    pointsText: {
+        fontSize: 18,
+        fontWeight: 'bold',
     },
 });
